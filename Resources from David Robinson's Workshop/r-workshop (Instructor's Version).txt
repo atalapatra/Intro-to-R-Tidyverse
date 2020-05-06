@@ -1,0 +1,253 @@
+---
+title: "Exploring Data with the Tidyverse"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Welcome to our R workshop **Exploring Data with the Tidyverse**!
+
+See this file at bit.ly/exploring-data-tidyverse
+
+### Setup
+
+```{r}
+install.packages("tidyverse")
+install.packages("unvotes")
+```
+
+### Code
+
+```{r}
+library(tidyverse)
+library(unvotes)
+```
+
+I can write text here
+
+```{r}
+un_votes %>%
+  filter(country == "China")
+
+un_votes %>%
+  count(vote)
+
+un_votes_joined <- un_votes %>%
+  left_join(un_roll_calls, by = "rcid") %>%
+  select(rcid:vote, date, short, descr)
+
+by_country <- un_votes_joined %>%
+  group_by(country, country_code) %>%
+  summarize(number = n(),
+            percent_yes = mean(vote == "yes")) %>%
+  ungroup() %>%
+  arrange(desc(percent_yes)) %>%
+  filter(number >= 100)
+```
+
+```{r}
+library(lubridate)
+library(scales)
+theme_set(theme_light())
+
+by_country_year <- un_votes_joined %>%
+  mutate(year = year(date),
+         yes = vote == "yes") %>%
+  group_by(country, country_code, year) %>%
+  summarize(number = n(),
+            percent_yes = mean(yes)) %>%
+  ungroup() %>%
+  filter(number >= 10)
+
+by_country_year %>%
+  filter(country == "United States of America") %>%
+  ggplot(aes(x = year, y = percent_yes)) +
+  geom_line() +
+  expand_limits(y = c(0, 1)) +
+  scale_x_continuous(breaks = seq(1948, 2016, 8)) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = "Year",
+       y = "% of yes votes by US",
+       title = "% of yes votes for US in the UN General Assembly") +
+  theme(plot.title = element_text(hjust = .5))
+  #theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+countries <- c("Canada", "United States of America",
+               "France", "South Africa", "India",
+               "Japan")
+
+by_country_year %>%
+  filter(country %in% countries) %>%
+  ggplot(aes(x = year, y = percent_yes)) +
+  geom_line() +
+  facet_wrap(~ country) +
+  expand_limits(y = c(0, 1))
+```
+
+```{r}
+by_country_year
+
+library(WDI)
+?WDI
+
+gdp_data <- WDI(indicator = c(gdp_per_cap = "NY.GDP.PCAP.CD"),
+                start = 2015,
+                end = 2015,
+                extra = TRUE) %>%
+  as_tibble()
+
+by_country %>%
+  inner_join(gdp_data %>% select(-country),
+             by = c(country_code = "iso2c")) %>%
+  ggplot(aes(x = gdp_per_cap, y = percent_yes, color = region)) +
+  geom_point() +
+  geom_text(aes(label = country), vjust = 1, hjust = 1,
+            check_overlap = TRUE) +
+  scale_x_log10(labels = dollar_format()) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_color_brewer(type = "qual") +
+  expand_limits(x = 40) + 
+  labs(x = "GDP per capita (2015 in USD)",
+       y = "% of yes votes in UN General Assembly",
+       color = "Region")
+```
+
+### Quantifying change over time
+
+```{r}
+library(broom)
+
+us <- by_country_year %>%
+  filter(country == "Seychelles")
+
+tidy(lm(percent_yes ~ year, us))
+
+country_slopes <- by_country_year %>%
+  group_by(country, country_code) %>%
+  summarize(model = list(tidy(lm(percent_yes ~ year)))) %>%
+  ungroup() %>%
+  unnest(model) %>%
+  filter(term == "year") %>%
+  arrange(estimate)
+
+country_slopes %>%
+  inner_join(gdp_data %>% select(-country),
+             by = c(country_code = "iso2c")) %>%
+  filter(estimate <= .05,
+         estimate >= -.05,
+         !is.na(region)) %>%
+  mutate(region = fct_reorder(region, estimate)) %>%
+  ggplot(aes(x = region, y = estimate)) +
+  geom_boxplot() +
+  coord_flip()
+```
+
+```{r}
+countries <- c("United States of America", "India",
+               "France", "Venezuela", "Seychelles",
+               "Japan")
+
+un_votes_joined %>%
+  inner_join(un_roll_call_issues, by = "rcid") %>%
+  mutate(yes = vote == "yes") %>%
+  group_by(country, country_code, issue) %>%
+  summarize(number = n(),
+            percent_yes = mean(yes)) %>%
+  filter(country %in% countries) %>%
+  ggplot(aes(x = issue, y = percent_yes)) +
+  geom_col() +
+  facet_wrap(~ country) +
+  coord_flip()
+```
+
+```{r}
+library(tidytext)
+
+un_roll_call_words <- un_roll_calls %>%
+  select(rcid, short) %>%
+  filter(!is.na(short)) %>%
+  unnest_tokens(word, short) %>%
+  anti_join(stop_words %>% filter(word != "self"), by = "word")
+
+un_roll_call_words %>%
+  count(word, sort = TRUE) %>%
+  head(20) %>%
+  mutate(word = fct_reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+  geom_col() +
+  coord_flip()
+```
+
+```{r}
+un_votes_joined %>%
+  inner_join(un_roll_call_words, by = "rcid") %>%
+  filter(country %in% c("Egypt", "Israel")) %>%
+  mutate(yes = vote == "yes") %>%
+  group_by(country, word) %>%
+  summarize(number = n(),
+            percent_yes = mean(yes)) %>%
+  ungroup() %>%
+  filter(number >= 100) %>%
+  arrange(desc(percent_yes)) %>%
+  group_by(word) %>%
+  filter(n() == 2) %>%
+  ungroup() %>%
+  mutate(word = fct_reorder(word, percent_yes)) %>%
+  ggplot(aes(x = word, y = percent_yes, fill = country)) +
+  geom_col(position = "dodge") +
+  coord_flip()
+```
+
+### Correlations
+
+```{r}
+install.packages("widyr")
+install.packages("ggraph")
+
+library(widyr)
+library(ggraph)
+library(tidygraph)
+library(igraph)
+
+correlations <- un_votes %>%
+  mutate(vote_number = as.integer(vote)) %>%
+  pairwise_cor(country_code, rcid, vote_number, sort = TRUE)
+
+correlations %>%
+  filter(item1 == "United States of America")
+
+set.seed(2019)
+
+nodes <- gdp_data %>%
+  semi_join(un_votes, by = c(iso2c = "country_code"))
+
+correlations %>%
+  group_by(item1) %>%
+  top_n(3, correlation) %>%
+  head(600) %>%
+  filter(item1 %in% nodes$iso2c,
+         item2 %in% nodes$iso2c) %>%
+  graph_from_data_frame(vertices = nodes) %>%
+  ggraph(layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(aes(color = income)) +
+  geom_node_text(aes(label = country), check_overlap = TRUE, vjust = 1, hjust = 1)
+```
+
+
+### Extra notes:
+
+To use PostgreSQL with R: https://db.rstudio.com/databases/postgresql/
+
+```{r}
+saveRDS(gdp_data, "gdp_data.rds")
+
+# If you need the data:
+gdp_data <- readRDS(url("https://www.dropbox.com/s/dkleeupfjs0vlxk/gdp_data.rds?dl=1"))
+```
+
+Text mining book: https://www.tidytextmining.com/

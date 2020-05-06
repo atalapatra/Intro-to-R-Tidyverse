@@ -1,0 +1,147 @@
+---
+title: "Tidyverse for Excella"
+author: "Amit Talapatra"
+date: "11/23/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+## Install and Load Packages
+install.packages("tidyverse")
+install.packages("unvotes")
+library(tidyverse)
+library(unvotes)
+
+## Get documentation on packages
+?tidyverse
+?unvotes
+```
+
+
+```{r}
+### Exploring Data with dplyr
+
+# https://dplyr.tidyverse.org/
+# filter() picks cases based on their values.
+# select() picks variables based on their names.
+# summarise() reduces multiple values down to a single summary.
+# arrange() changes the ordering of the rows.
+# mutate() adds new variables that are functions of existing variables
+
+# View data samples
+un_votes
+
+un_votes %>%
+  filter(country_code == "RU")
+
+un_votes %>%
+  filter(country == "China")
+
+un_votes %>%
+  count(vote)
+
+un_roll_calls
+
+# How does the US vote?
+un_votes %>%
+  left_join(un_roll_calls, by = "rcid") %>% # Join un_votes to un_roll_calls
+  select(rcid:vote, date, short, descr) %>% # Keep columns between rcid and vote, and a few others
+  filter(country_code == "US") %>% # How does the US vote?
+  count(vote) # Count votes
+
+#	"Data science is mostly counting and sometimes dividing" - Hadley Wickam
+
+un_votes_joined <- un_votes %>%
+  left_join(un_roll_calls, by = "rcid") %>% # Join un_votes to un_roll_calls
+  select(rcid:vote, date, short, descr) # Keep columns between rcid and vote, and a few others
+  
+un_votes
+
+# What percentage of US votes are "yes"?
+un_votes_joined %>%
+  filter(country_code == "US") %>% # How does the US vote?
+  summarize(number = n(), # Gets the number of observations in the current group
+            percent_yes = mean(vote == "yes")) # This trick can be used to find the percent "yes". This works because vote == "yes" is a boolean list that                                                  becomes 1s and 0s when when 'mean' is applied to it.
+
+# What are the most "agreeable" countries?
+un_votes_joined %>%
+  group_by(country) %>% 
+  summarize(number = n(),
+            percent_yes = mean(vote == "yes")) %>%
+  arrange(desc(percent_yes)) %>% # Equivalent to order by in SQL
+  filter(number >= 100)
+
+# Save this as an object
+by_country <- 
+  un_votes_joined %>%
+    group_by(country) %>% 
+    summarize(number = n(),
+              percent_yes = mean(vote == "yes")) %>%
+    arrange(desc(percent_yes)) %>% # Equivalent to order by in SQL
+    filter(number >= 100)
+
+# Load lubridate. We need to call this package specifically because not all tidyverse packages are called when using library(tidyverse)
+library(lubridate)
+
+# Add a year column to the table, and reorganize to make the computation more efficient
+by_country_year <- un_votes_joined %>%
+  mutate(year = year(date), # year() comes from lubridate
+         yes = vote == "yes") %>%
+  group_by(country, year) %>% 
+  summarize(number = n(),
+            percent_yes = mean(yes)) %>%
+  ungroup() %>% # It is recommended to ungroup before filter steps. Grouping adds metadata that can affect later transformations, and ungrouping can make                  later steps more efficient. Look into the reason why this is.
+  filter(number >= 10)
+
+# A more readable (?), but less efficient way to do this
+by_country_year_alt <- un_votes_joined %>%
+  mutate(year = year(date)) %>% # year() comes from lubridate
+  group_by(country, year) %>% 
+  summarize(number = n(),
+            percent_yes = mean(vote == "yes")) %>%
+  ungroup() %>% # It is recommended to ungroup before filter steps. Grouping adds metadata that can affect later transformations, and ungrouping can make                  later steps more efficient. Look into the reason why this is.
+  filter(number >= 10)
+```
+
+
+```{r}
+## Using ggplot2
+
+library(scales) 
+theme_set(theme_light()) # Change global theme
+
+# Create a line plot of how the US has voted
+by_country_year %>%
+  filter(country == "United States of America") %>%
+  ggplot(aes(x = year, y = percent_yes)) +
+  geom_line() +
+  expand_limits(y = c(0, 1)) +
+  scale_x_continuous(breaks = seq(1948, 2016, 8)) + # Show x-axis by 8-year periods to visualize election changes
+  scale_y_continuous(labels = percent_format()) + # % format for y-axis
+  theme(axis.text.x = element_text(angle = -90, hjust = 1)) + # rotate x-axis labels
+  labs(x = "Year",
+       title = "% of Yes Votes for the US in the UN General Assembly by Year",
+       y = "% Yes Votes") +
+  theme(plot.title = element_text(hjust = .5))
+
+# Try it with multiple countries
+countries <- c("Canada", "United States of America", "France", "South Africa", "India", "Japan")
+
+by_country_year %>%
+  filter(country %in% countries) %>%
+  ggplot(aes(x = year, y = percent_yes)) +
+  geom_line() +
+  facet_wrap(~ country) + # Split countries to separate plots
+  expand_limits(y = c(0, 1)) +
+  scale_x_continuous(breaks = seq(1948, 2016, 8)) + # Show x-axis by 8-year periods to visualize election changes
+  scale_y_continuous(labels = percent_format()) + # % format for y-axis
+  theme(axis.text.x = element_text(angle = -90, hjust = 1)) + # rotate x-axis labels
+  labs(x = "Year",
+       title = "% of Yes Votes for the US in the UN General Assembly by Year",
+       y = "% Yes Votes") +
+  theme(plot.title = element_text(hjust = .5))
+```
+
+
