@@ -9,7 +9,7 @@ editor_options:
 
 
 ```{r}
-## Install Packages
+### Install Packages
 install.packages("unvotes") # Package of UN Resolution Voting Data
 install.packages("WDI") # Package of World Development Indicators from World Bank
 install.packages("tidyverse")
@@ -21,13 +21,26 @@ install.packages("widyr")
 
 
 ```{r}
+### Load data from unvotes to local csv files
+library(unvotes)
+library(readr)
+
+un_votes
+un_roll_calls
+un_roll_call_issues
+
+
+```
+
+
+```{r}
 ## Load Packages
 library(unvotes)
 library(WDI)
 library(tidyverse)
 
 ## Get documentation on packages
-?unvotes
+??unvotes
 ?WDI
 ?tidyverse
 ```
