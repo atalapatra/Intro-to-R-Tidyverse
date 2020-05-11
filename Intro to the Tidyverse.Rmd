@@ -9,7 +9,7 @@ editor_options:
 
 
 ```{r}
-### Install Packages
+### Install Packages (You only need to run this on your machine once)
 install.packages("unvotes") # Package of UN Resolution Voting Data
 install.packages("WDI") # Package of World Development Indicators from World Bank
 install.packages("tidyverse")
@@ -251,102 +251,6 @@ by_country %>%
 
 
 ```{r}
-### UN Resolutions Topics, Text Mining
-
-un_roll_call_issues
-
-un_roll_call_issues %>%
-  count(issue)
-
-un_roll_call_issues %>%
-  count(issue) %>%
-  arrange(desc(n))
-
-un_votes_joined
-
-countries <- c("United States of America", "India", "France",
-               "Japan", "Germany", "China")
-
-un_votes_joined %>%
-  inner_join(un_roll_call_issues, by = "rcid") %>%
-  mutate(yes = vote == "yes") %>%
-  group_by(country, country_code, issue) %>%
-  summarize(number = n(),
-            percent_yes = mean(yes)) %>%
-  filter(country %in% countries) %>%
-  ggplot(aes(x = issue, y = percent_yes)) +
-  geom_col() +
-  facet_wrap(~ country) +
-  coord_flip() 
-
-## Text Mining
-
-un_votes_joined %>%
-  count(short, sort = TRUE)
-
-install.packages("tidytext")
-library(tidytext)
-
-# Tokenization involves breaking up strings into pieces (e.g. words, keywords, phrases). This is a common task in text mining.
-
-un_roll_calls
-
-un_roll_call_words <- un_roll_calls %>%
-  select(rcid, short) %>%
-  filter(!is.na(short)) %>% # is.na() is an r function that identifies null values
-  unnest_tokens(word, short) %>% # unnest the 'short' column by words
-  anti_join(stop_words %>% filter(word != "self"), by = "word") # To remove stop words
-
-# Plot the most common words used
-un_roll_call_words %>%
-  count(word, sort = TRUE) %>%
-  head(20) %>%
-  mutate(word = fct_reorder(word, n)) %>%
-  ggplot(aes(x = word, y = n)) +
-  geom_col() +
-  coord_flip()
-
-# Compare voting record of US and France
-un_votes_joined %>%
-  inner_join(un_roll_call_words, by = "rcid") %>%
-  filter(country %in% c("United States of America","France")) %>%
-  mutate(yes = vote == "yes") %>%
-  group_by(word, country) %>%
-  summarize(number = n(),
-            percent_yes = mean(yes)) %>%
-  ungroup() %>%
-  filter(number >= 100) %>%
-  arrange(desc(percent_yes)) %>%
-  group_by(word) %>%
-  filter(n() == 2) %>%
-  ungroup() %>%
-  mutate(word = fct_reorder(word, percent_yes)) %>%
-  ggplot(aes(x = word, y = percent_yes, fill = country)) +
-  geom_col(position = "dodge") +
-  coord_flip()
-
-un_votes_joined %>%
-  inner_join(un_roll_call_words, by = "rcid") %>%
-  filter(country %in% c("United States of America","China")) %>%
-  mutate(yes = vote == "yes") %>%
-  group_by(word, country) %>%
-  summarize(number = n(),
-            percent_yes = mean(yes)) %>%
-  ungroup() %>%
-  filter(number >= 100) %>%
-  arrange(desc(percent_yes)) %>%
-  group_by(word) %>%
-  filter(n() == 2) %>%
-  ungroup() %>%
-  mutate(word = fct_reorder(word, percent_yes)) %>%
-  ggplot(aes(x = word, y = percent_yes, fill = country)) +
-  geom_col(position = "dodge") +
-  coord_flip()
-
-```
-
-
-```{r}
 ### Correlations and Network Graphs
 
 library(ggraph) # Network graph package
@@ -399,3 +303,4 @@ correlations %>%
   theme_void()
 
 ```
+
