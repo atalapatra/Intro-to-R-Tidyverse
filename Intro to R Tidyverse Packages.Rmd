@@ -21,19 +21,6 @@ install.packages("widyr")
 
 
 ```{r}
-### Load data from unvotes to local csv files
-library(unvotes)
-library(readr)
-
-un_votes
-un_roll_calls
-un_roll_call_issues
-
-
-```
-
-
-```{r}
 ## Load Packages
 library(unvotes)
 library(WDI)
@@ -91,8 +78,6 @@ un_votes_joined %>%
   count(vote) # Count votes
 
 un_votes_joined
-
-# "Data science is mostly counting and sometimes dividing" - Hadley Wickam
 
 # What percentage of US votes are "yes"?
 un_votes_joined %>%
@@ -193,9 +178,6 @@ by_country_year %>%
 
 # Try it with multiple countries
 countries <- c("Canada", "United States of America", "France", "South Africa", "India", "Japan")
-
-library(scales) 
-theme_set(theme_light()) # Change global theme
 
 by_country_year %>%
   filter(country %in% countries) %>%
