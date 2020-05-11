@@ -255,7 +255,7 @@ by_country %>%
 
 library(ggraph) # Network graph package
 library(igraph) # Network graph package
-library(tidygraph) # 
+library(tidygraph)
 library(widyr)
 
 # Using Pearson Correlation between pairs of countries. Pearson correlations show how closely two variables are linearly related.
@@ -274,23 +274,19 @@ correlations <- un_votes %>%
 
 set.seed(2019)
 
-# We want to plot only the top connections in the 'correlations' dataframe
-correlations %>%
-  group_by(item1) %>%
-  top_n(3, correlation) %>% 
-  head(300) %>%
-  as_tbl_graph() %>%
-  ggraph(layout = "fr") +
-  geom_node_point() +
-  geom_node_text(aes(label = name), repel = TRUE) +
-  geom_edge_link() +
-  theme_void()
-
 # Use country codes as labels
 correlations <- un_votes %>%
   mutate(vote_number = as.integer(vote)) %>%
   pairwise_cor(country_code, rcid, vote_number, sort = TRUE)
 
+# tidygraph lets us convert data to the tbl_graph object, which is like a tibble for graph data
+correlations %>%
+  group_by(item1) %>%
+  top_n(3, correlation) %>% 
+  head(300) %>%
+  as_tbl_graph()
+
+# We want to plot only the top connections in the 'correlations' dataframe
 correlations %>%
   group_by(item1) %>%
   top_n(3, correlation) %>% 
