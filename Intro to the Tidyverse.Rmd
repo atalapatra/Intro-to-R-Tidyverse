@@ -57,12 +57,6 @@ un_votes %>%
   select(rcid, country, vote)
 
 un_votes %>%
-  filter(country == "China")
-
-un_votes %>%
-  filter(country %in% c("China","United States"))
-
-un_votes %>%
   count(vote)
 
 un_roll_calls
@@ -72,12 +66,12 @@ un_votes_joined <- un_votes %>%
   left_join(un_roll_calls, by = "rcid") %>% # Join un_votes to un_roll_calls
   select(rcid:vote, date, short, descr) # Keep columns between rcid and vote, and a few others
 
+un_votes_joined
+
 # How does the US vote?
 un_votes_joined %>%
   filter(country_code == "US") %>% # How does the US vote?
   count(vote) # Count votes
-
-un_votes_joined
 
 # What percentage of US votes are "yes"?
 un_votes_joined %>%
@@ -177,7 +171,7 @@ by_country_year %>%
   theme(plot.title = element_text(hjust = .5))
 
 # Try it with multiple countries
-countries <- c("Canada", "United States of America", "France", "South Africa", "India", "Japan")
+countries <- c("Canada", "United States of America", "France", "Spain", "India", "Japan")
 
 by_country_year %>%
   filter(country %in% countries) %>%
@@ -192,6 +186,7 @@ by_country_year %>%
        y = "% Yes Votes") +
   theme(plot.title = element_text(hjust = .5))
 
+# Split countries to separate plots
 by_country_year %>%
   filter(country %in% countries) %>%
   ggplot(aes(x = year, y = percent_yes, color = country)) +
