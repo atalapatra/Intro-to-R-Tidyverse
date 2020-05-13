@@ -104,22 +104,11 @@ library(lubridate)
 # Add a year column to the table, and reorganize to make the computation more efficient
 by_country_year <- un_votes_joined %>%
   mutate(year = year(date), # year() comes from lubridate
-         yes = vote == "yes") %>%
+         yes = vote == "yes") %>% # Turning the vote column into a boolean is more efficient with mutate() than when doing it in the summarize step
   group_by(country, year) %>% 
   summarize(number = n(), percent_yes = mean(yes)) %>%
   ungroup() %>% # It is recommended to ungroup before filter steps. Grouping adds metadata that can affect later transformations, and ungrouping can make later steps more efficient.
   filter(number >= 10)
-
-# A more readable (?), but less efficient way to do this
-by_country_year_alt <- un_votes_joined %>%
-  mutate(year = year(date)) %>% # year() comes from lubridate
-  group_by(country, year) %>% 
-  summarize(number = n(), percent_yes = mean(vote == "yes")) %>%
-  ungroup() %>% # It is recommended to ungroup before filter steps. Grouping adds metadata that can affect later transformations, and ungrouping can make later steps more efficient.
-  filter(number >= 10)
-
-# Turning the vote column into a boolean is more efficient with mutate() than when doing it in the summarize step
-
 ```
 
 
